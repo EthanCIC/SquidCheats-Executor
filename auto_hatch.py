@@ -1,7 +1,6 @@
 import argparse
 import time
 import random
-from sell_strategies import *
 from squid_cheat import *
 
 def generate_hatch_commands(N_commands, ton_threshold=1, sort_column='total_egg'):
