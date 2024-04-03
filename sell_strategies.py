@@ -145,7 +145,7 @@ def sweep(target_price, ton_threshold=0.62, buffer=0.5, only_our_order=False, ig
         price = int(open_order_df['price'].iloc[i]*1e9)
         TON = open_order_df['ton'].iloc[i]
         seller = open_order_df['seller'].iloc[i]
-        nonce = get_nonce()
+        nonce = open_order_df['nonce'].iloc[i]
         order_id = open_order_df['id'].iloc[i]
 
         # 找到 squid_cheat_df 內 'ton'(balance) - 'ton'(order_amount) 差值最小（但必須是大於buffer的）的那個地址
