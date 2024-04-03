@@ -4,6 +4,7 @@ import math
 from IPython.display import display
 from squid_cheat import *
 import matplotlib.pyplot as plt
+from datetime import datetime
 
 def sell_strategy_avg(order_number, lower_bound_price, upper_bound_price, lower_bound_egg, upper_bound_egg, ratio=0.2, ton_threshold=0.01, sort_column='total_egg'):
     # 產出 uniform 隨機 order_number 筆資料
@@ -121,35 +122,63 @@ def sell_strategy_avg(order_number, lower_bound_price, upper_bound_price, lower_
 
     return all_commands
 
-def sweep(target_price, ton_threshold=0.01):
-    open_order_df = get_open_orders_from_squid_db()
+def get_nonce():
+    return int(datetime.now().timestamp() // 1)
 
-    # 這是我要的訂單
-    open_order_df = open_order_df[open_order_df['price'] < target_price].sort_values(by='ton')
+def sweep(target_price, ton_threshold=0.62, buffer=0.5, only_our_order=False, ignore_addresses=[], ignore_our_order=False, order_ton_threshold=0):
+    open_order_df = get_open_orders_from_squid_db_for_sweep(only_our_order=only_our_order, ignore_addresses=ignore_addresses, ignore_our_order=ignore_our_order, order_ton_threshold=order_ton_threshold, target_price=target_price)
+
+    # 這是我要的訂單 (從price少的開始掃)
+    open_order_df = open_order_df.sort_values(by='price')
 
     # 這是我要配對的地址
     squid_cheat_df = get_bot_list_from_squid_cheat_db(ton_threshold, sort_column='ton')
+
+    squid_cheat_df = squid_cheat_df.sort_values(by='ton', ascending=True)
 
     # 開始配對
     orders = []
     
     # command = f"timeout --kill-after=30 30 npm run start -- buy {row1['id']} {row2['egg']} {row2['ton']} {row2['seller']} {row2['nonce']}"
     for i in range(len(open_order_df)):
+        egg = open_order_df['egg'].iloc[i]
+        price = int(open_order_df['price'].iloc[i]*1e9)
+        TON = open_order_df['ton'].iloc[i]
+        seller = open_order_df['seller'].iloc[i]
+        nonce = open_order_df['nonce'].iloc[i]
+        order_id = open_order_df['id'].iloc[i]
 
-        # open_order_df = def get_open_orders_from_squid_db():
-        # engine = create_engine('mysql+pymysql://pelith:Pup3dgVfvv7Deg@34.81.131.171:3306/squid-prod')
-        # query = """
-        #     SELECT seller, egg, ton, nonce, last_timestamp
-        #     FROM sell_orders
-        #     WHERE status = 'open'
-        # """
-        # open_order_df = pd.read_sql_query(query, engine)
-        # open_order_df['price'] = open_order_df['ton'] / open_order_df['egg'] / 1e9
-        # open_order_df['price'] = round(open_order_df['price'], 7)
-        # return open_order_df
+        # 找到 squid_cheat_df 內 'ton'(balance) - 'ton'(order_amount) 差值最小（但必須是大於buffer的）的那個地址
+        address = squid_cheat_df[squid_cheat_df['ton'] - TON/1e9 > buffer]['address'].iloc[0]
+        # 找到該地址的 id
+        id = squid_cheat_df[squid_cheat_df['address'] == address]['id'].iloc[0]
+        # 把配對的地址從 df 內刪掉
+        squid_cheat_df = squid_cheat_df[squid_cheat_df['address'] != address]
+        # 把配對的地址存到 orders 內
+        orders.append({'id': id, 'egg': egg, 'price': TON, 'seller': seller, 'nonce': nonce, 'order_id': order_id})
+    
+    # 把 orders 轉換成 DataFrame
+    orders_df = pd.DataFrame(orders)
 
-        egg = open_order_df.iloc[i, 1]
-        ton = open_order_df.iloc[i, 2]
-        price = open_order_df.iloc[i, 3]
+    #TODO 分成兩種單
 
+    all_commands = []
+    order_ids = []
+    for index, row in orders_df.iterrows():
+        id = row['id']
+        amount = row['egg']
+        price = row['price']
+        seller = row['seller']
+        nonce = row['nonce']
+        order_id = row['order_id']
 
+        command = f"timeout --kill-after=30 30 npm run start -- buy {id} {amount} {price} {seller} {nonce}"
+        all_commands.append(command)
+        order_ids.append(order_id)
+    
+    return all_commands, order_ids
+
+if __name__ == '__main__':
+    all_commands, order_ids = sweep(0.0005)
+    for c in all_commands:
+        print(c)

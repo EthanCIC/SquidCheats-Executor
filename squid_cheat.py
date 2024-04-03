@@ -8,6 +8,9 @@ import os
 import random
 import time
 import pymysql
+from random import uniform, randint
+from datetime import datetime
+from collections import defaultdict
 
 def run_command(command):
     # 保存當前目錄的路徑
@@ -102,6 +105,105 @@ def execute_commands(all_commands, N_min, N_max, sleep_min=None, sleep_max=None)
 
     print("All commands have been executed")
 
+def get_failed_commands(commands, results):
+    failed_commands = []
+    for i, returncode in enumerate(results):
+        if returncode == 0:
+            continue
+        failed_commands.append(commands[i])
+    
+    return failed_commands
+
+def get_failed_order_ids(part_order_ids, results):
+    failed_order_ids = []
+    for i, returncode in enumerate(results):
+        if returncode == 0:
+            continue
+        failed_order_ids.append(part_order_ids[i])
+    
+    return failed_order_ids
+
+def add_failed_commands_back_to_all_commands(all_commands, failed_commands):
+    all_commands = failed_commands + all_commands
+
+def add_failed_order_ids_back_to_order_ids(order_ids, failed_order_ids):
+    order_ids = failed_order_ids + order_ids
+
+def get_now_timestamp():
+    return datetime.now().timestamp()
+
+def sleep_according_to_deadline_and_commands_done(deadline, origin_commands_amount, amount_of_commands_done_this_round):
+    time_left = deadline - get_now_timestamp()
+
+    time_to_sleep = time_left/origin_commands_amount*amount_of_commands_done_this_round
+
+    time.sleep(time_to_sleep)
+
+def is_miss_deadline(deadline):
+    return get_now_timestamp() > deadline
+
+def record_fail_count(fail_count, failed_order_ids):
+    for failed_order_id in failed_order_ids:
+        fail_count[failed_order_id] += 1
+
+def remove_order_over_try_times(fail_count, failed_commands, failed_order_ids, try_times):
+    new_failed_commands = []
+    new_failed_order_ids = []
+    for i in range(len(failed_order_ids)):
+        if fail_count[failed_order_ids[i]] < try_times:
+            new_failed_commands.append(failed_commands[i])
+            new_failed_order_ids.append(failed_order_ids[i])
+
+    return new_failed_commands, new_failed_order_ids
+
+def extend_time(finish_in_seconds, origin_commands_amount, success_count):
+    return int(finish_in_seconds/origin_commands_amount*success_count)
+
+def execute_commands_for_sweep(all_commands, order_ids, finish_in_minutes=0, try_times=2):
+    finish_in_seconds = finish_in_minutes*60
+    deadline = int(get_now_timestamp()+finish_in_seconds)
+    origin_commands_amount = len(all_commands)
+
+    success_count = 0
+    fail_count = defaultdict(int)
+    while all_commands:
+        random_amount_of_commands = randint(15, 20)
+        part_commands = all_commands[:random_amount_of_commands]
+        all_commands = all_commands[random_amount_of_commands:]
+        part_order_ids = order_ids[:random_amount_of_commands]
+        order_ids = order_ids[random_amount_of_commands:]
+
+        with concurrent.futures.ThreadPoolExecutor() as executor:
+            results = list(executor.map(run_command, part_commands))
+        
+        failed_commands = get_failed_commands(part_commands, results)
+        failed_order_ids = get_failed_order_ids(part_order_ids, results)
+        
+        record_fail_count(fail_count, failed_order_ids)
+
+        # 超過嘗試次數的 直接捨棄掉 先交易別的
+        failed_commands, failed_order_ids = remove_order_over_try_times(fail_count, failed_commands, failed_order_ids, try_times)
+        
+        add_failed_commands_back_to_all_commands(all_commands, failed_commands)
+        add_failed_order_ids_back_to_order_ids(order_ids, failed_order_ids)
+
+        amount_of_commands_done_this_round = results.count(0)
+        success_count += amount_of_commands_done_this_round
+        print(f"\nTry to run {random_amount_of_commands} commands. So far {success_count} commands succeeded, and still {origin_commands_amount-success_count} commands to go.\n")
+
+        # 將失敗的命令寫入 CSV 檔案
+        with open('buy_failed_commands.csv', 'w', newline='') as csvfile:
+            writer = csv.writer(csvfile)
+            for command in failed_commands:
+                writer.writerow([command])
+
+        if is_miss_deadline(deadline):
+            # 如果超時 依據目前尚未完成的command數量追加時間
+            deadline = get_now_timestamp() + extend_time(finish_in_seconds, origin_commands_amount, success_count)
+        sleep_according_to_deadline_and_commands_done(deadline, origin_commands_amount, amount_of_commands_done_this_round)
+        
+    print("All commands have been executed")
+
 def get_bot_list_from_squid_cheat_db(ton_threshold=0.01, sort_column='total_egg'):
     squid_db_engine = create_engine('mysql+mysqlconnector://pelith:Pup3dgVfvv7Deg@34.81.131.171:3306/squid-prod')
     all_address_query = """
@@ -171,5 +273,64 @@ def get_open_orders_from_squid_db():
     open_order_df = pd.read_sql_query(query, engine)
     open_order_df['price'] = open_order_df['ton'] / open_order_df['egg'] / 1e9
     open_order_df['price'] = round(open_order_df['price'], 7)
+
+    return open_order_df
+
+def get_sql_in_condition_command(field, in_list, is_in=True):
+    need_not = " "
+    if not is_in:
+        need_not = " NOT "
+    return f"{field}{need_not}IN ({','.join(in_list)})"
+
+def get_sqlite_db_path():
+    # 獲取當前腳本的路徑
+    current_script_path = os.path.dirname(os.path.realpath(__file__))
+
+    # 構建 dev.sqlite3 的相對路徑
+    sqlite_db_path = os.path.join(current_script_path, '..', 'SquidCheats', 'dev.sqlite3')
+
+    return sqlite_db_path
+
+def get_our_seller():
+    sqlite_db_path = get_sqlite_db_path()
+    cheat_engine = create_engine(f'sqlite:///{sqlite_db_path}')
+
+    bot_db_query = "SELECT id, address, balance/1e9 AS ton FROM accounts"
+    bot_db_df = pd.read_sql_query(bot_db_query, cheat_engine)
+
+    return list(bot_db_df['address'])
+
+def get_open_orders_from_squid_db_for_sweep(only_our_order=False, ignore_addresses=[], ignore_our_order=False, order_ton_threshold=0, target_price=0):
+    engine = create_engine('mysql+pymysql://pelith:Pup3dgVfvv7Deg@34.81.131.171:3306/squid-prod')
+    query = """
+        SELECT id, seller, egg, ton, nonce, last_timestamp
+        FROM sell_orders
+        WHERE status = 'open'"""
+    in_seller = []
+    not_in_seller = []
+
+    if only_our_order:
+        in_seller += get_our_seller()
+    
+    if ignore_our_order:
+        not_in_seller += get_our_seller()
+
+    if ignore_addresses:
+        not_in_seller += ignore_addresses
+    
+    if in_seller:
+        query += f" AND {get_sql_in_condition_command(field='seller', in_list=in_seller, is_in=True)}"
+    
+    if not_in_seller:
+        query += f" AND {get_sql_in_condition_command(field='seller', in_list=not_in_seller, is_in=False)}"
+    
+    if order_ton_threshold > 0:
+        query += f" AND ton <= {order_ton_threshold*1e9}"
+
+    open_order_df = pd.read_sql_query(query, engine)
+    open_order_df['price'] = open_order_df['ton'] / open_order_df['egg'] / 1e9
+    # open_order_df['price'] = round(open_order_df['price'], 7)
+    if target_price > 0:
+        open_order_df = open_order_df[open_order_df['price'] < target_price]
 
     return open_order_df
