@@ -27,7 +27,6 @@ def main(N_commands, ton_threshold, N_min, N_max, sleep_min, sleep_max, egg_min=
         update_balances(N=10)
         hatch_commands, total_eggs = generate_hatch_commands(N_commands, ton_threshold=ton_threshold, egg_min=egg_min, egg_max=egg_max)
         print(f"Total eggs to hatch: {total_eggs}")
-        hatch_commands = generate_hatch_commands(N_commands, ton_threshold=ton_threshold, egg_min=egg_min, egg_max=egg_max)
         execute_commands(hatch_commands, N_min=N_min, N_max=N_max, sleep_min=sleep_min, sleep_max=sleep_max)
 
 if __name__ == "__main__":

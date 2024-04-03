@@ -205,7 +205,7 @@ def execute_commands_for_sweep(all_commands, order_ids, finish_in_minutes=0, try
     print("All commands have been executed")
 
 def get_bot_list_from_squid_cheat_db(ton_threshold=0.01, sort_column='total_egg'):
-    squid_db_engine = create_engine('mysql+mysqlconnector://pelith:Pup3dgVfvv7Deg@34.81.131.171:3306/squid-prod')
+    squid_db_engine = create_engine('mysql+pymysql://pelith:Pup3dgVfvv7Deg@34.81.131.171:3306/squid-prod')
     all_address_query = """
         SELECT address, squid, squid_egg, reward_per_squid_paid
         FROM players
