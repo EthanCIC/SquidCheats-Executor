@@ -159,10 +159,71 @@ def remove_order_over_try_times(fail_count, failed_commands, failed_order_ids, t
 def extend_time(finish_in_seconds, origin_commands_amount, success_count):
     return int(finish_in_seconds/origin_commands_amount*success_count)
 
+def get_order(order_id):
+    engine = create_engine('mysql+pymysql://pelith:Pup3dgVfvv7Deg@34.81.131.171:3306/squid-prod')
+    query = f"""
+        SELECT seller, status, buyer
+        FROM sell_orders
+        WHERE id = {order_id}
+    """
+    order_df = pd.read_sql_query(query, engine)
+    
+    order = order_df.iloc[0]
+
+    return order.to_dict()
+
+def get_buyer(buyer_id):
+    sqlite_db_path = get_sqlite_db_path()
+    cheat_engine = create_engine(f'sqlite:///{sqlite_db_path}')
+
+    buyer_query = f"SELECT id, address FROM accounts WHERE id = {buyer_id}"
+    buyer_df = pd.read_sql_query(buyer_query, cheat_engine)
+
+    buyer = buyer_df.iloc[0]
+
+    return buyer.to_dict()
+
+def get_buyer_address_from_commands(command):
+    second_part = command.split('buy')[1].strip()
+    buyer_id = second_part.split(' ')[0].strip()
+    buyer = get_buyer(buyer_id)
+
+    return buyer['address']
+
+def check_sweep_success(origin_commands, origin_order_ids):
+    success_record = {}
+    for i in range(len(origin_order_ids)):
+        order = get_order(origin_order_ids[i])
+        command = origin_commands[i]
+        if order['status'] != 'complete':
+            success_record[command] = False
+            continue
+        buyer_address = get_buyer_address_from_commands(command)
+        if order['buyer'] != buyer_address:
+            success_record[command] = False
+            continue
+        success_record[command] = True
+    
+    success_count = 0
+    for _command, is_success in success_record.items():
+        success_str = 'fail'
+        if is_success:
+            success_count+=1
+            success_str = 'success'
+
+        print(f'{_command}: {success_str}')
+    
+    print('='*80)
+    commands_amout = len(origin_commands)
+    success_rate = round(success_count/commands_amout, 4)*100
+    print(f'Out of {commands_amout} commands, {success_count} were successful, success rate is {success_rate}%.')
+
 def execute_commands_for_sweep(all_commands, order_ids, finish_in_minutes=0, try_times=2):
     finish_in_seconds = finish_in_minutes*60
     deadline = int(get_now_timestamp()+finish_in_seconds)
     origin_commands_amount = len(all_commands)
+    origin_commands = all_commands[:]
+    origin_order_ids = order_ids[:]
 
     success_count = 0
     fail_count = defaultdict(int)
@@ -189,7 +250,7 @@ def execute_commands_for_sweep(all_commands, order_ids, finish_in_minutes=0, try
 
         amount_of_commands_done_this_round = results.count(0)
         success_count += amount_of_commands_done_this_round
-        print(f"\nTry to run {random_amount_of_commands} commands. So far {success_count} commands succeeded, and still {origin_commands_amount-success_count} commands to go.\n")
+        print(f"\nTry to run another {len(part_commands)} commands. So far {success_count} commands succeeded, and still {origin_commands_amount-success_count} commands to go.\n")
 
         # 將失敗的命令寫入 CSV 檔案
         with open('buy_failed_commands.csv', 'w', newline='') as csvfile:
@@ -201,8 +262,12 @@ def execute_commands_for_sweep(all_commands, order_ids, finish_in_minutes=0, try
             # 如果超時 依據目前尚未完成的command數量追加時間
             deadline = get_now_timestamp() + extend_time(finish_in_seconds, origin_commands_amount, success_count)
         sleep_according_to_deadline_and_commands_done(deadline, origin_commands_amount, amount_of_commands_done_this_round)
-        
+
     print("All commands have been executed")
+    print("Wait 30 seconds for the on-chain work and will provide sweep result.")
+    time.sleep(30)
+
+    check_sweep_success(origin_commands, origin_order_ids)
 
 def get_bot_list_from_squid_cheat_db(ton_threshold=0.01, sort_column='total_egg'):
     squid_db_engine = create_engine('mysql+pymysql://pelith:Pup3dgVfvv7Deg@34.81.131.171:3306/squid-prod')
@@ -334,3 +399,7 @@ def get_open_orders_from_squid_db_for_sweep(only_our_order=False, ignore_address
         open_order_df = open_order_df[open_order_df['price'] < target_price]
 
     return open_order_df
+
+if __name__ == '__main__':
+    get_order(95099)
+    print(get_buyer_address_from_commands('timeout --kill-after=30 30 npm run start -- buy 22104 359 300000000 UQAdZn2H0fwh7L8IuU2JdNe9RUnnPZrIxVcBtsynNeiXtl2M 1711772956'))
