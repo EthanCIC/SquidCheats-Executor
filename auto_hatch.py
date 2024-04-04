@@ -27,7 +27,7 @@ def main(N_commands, ton_threshold, N_min, N_max, sleep_min, sleep_max, egg_min=
         update_balances(N=10)
         hatch_commands, total_eggs = generate_hatch_commands(N_commands, ton_threshold=ton_threshold, egg_min=egg_min, egg_max=egg_max)
         print(f"Total eggs to hatch: {total_eggs}")
-        execute_commands(hatch_commands, N_min=N_min, N_max=N_max, sleep_min=sleep_min, sleep_max=sleep_max)
+        execute_commands_no_retry(hatch_commands, N_min=N_min, N_max=N_max, sleep_min=sleep_min, sleep_max=sleep_max)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='自動 hatch 機器人，會永無止盡的執行下去，直到手動停止程式。')
@@ -37,7 +37,7 @@ if __name__ == "__main__":
     parser.add_argument('--N_max', type=int, default=1, help='Maximum number of bots to hatch. Default is 1')
     parser.add_argument('--sleep_min', type=float, help='Minimum sleep time in seconds.')
     parser.add_argument('--sleep_max', type=float, help='Maximum sleep time in seconds.')
-    parser.add_argument('--egg_min', type=int, default=0, help='Minimum total egg count. Default is 100')
+    parser.add_argument('--egg_min', type=int, default=5000, help='Minimum total egg count. Default is 100')
     parser.add_argument('--egg_max', type=int, default=70000, help='Maximum total egg count. Default is 70000')
 
     args = parser.parse_args()
