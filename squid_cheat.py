@@ -1,4 +1,4 @@
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 import pandas as pd
 import math
 import subprocess
@@ -11,6 +11,8 @@ import pymysql
 from random import uniform, randint
 from datetime import datetime
 from collections import defaultdict
+from psycopg2 import connect
+from tqdm import tqdm
 
 def run_command(command):
     # 保存當前目錄的路徑
@@ -450,6 +452,82 @@ def get_open_orders_from_squid_db_for_sweep(only_our_order=False, ignore_address
 
     return open_order_df
 
-if __name__ == '__main__':
-    get_order(95099)
-    print(get_buyer_address_from_commands('timeout --kill-after=30 30 npm run start -- buy 22104 359 300000000 UQAdZn2H0fwh7L8IuU2JdNe9RUnnPZrIxVcBtsynNeiXtl2M 1711772956'))
+def get_columns_of_table(table_name):
+    conn = connect(
+        host='35.189.161.212',
+        user='postgres',
+        password='squidcheat',
+        port=5432,
+        database='sc',
+    )
+    cursor = conn.cursor()
+    query = f"SELECT column_name FROM information_schema.columns WHERE table_name = '{table_name}'"
+    cursor.execute(query)
+
+    column_names = cursor.fetchall()
+
+    for column in column_names:
+        print(column[0])
+
+    cursor.close()
+    conn.close()
+
+def update_latest_bot_balance():
+    sqlite_db_path = get_sqlite_db_path()
+    cheat_engine = create_engine(f'sqlite:///{sqlite_db_path}')
+
+    conn = connect(
+        host='35.189.161.212',
+        user='postgres',
+        password='squidcheat',
+        port=5432,
+        database='sc',
+    )
+    cursor = conn.cursor()
+    query = """SELECT address, balance FROM players"""
+    cursor.execute(query)
+
+    addresses = []
+    with cheat_engine.connect() as connection:
+        for address, balance in tqdm(cursor.fetchall()):
+            query = f"""
+                UPDATE accounts
+                SET balance={balance}
+                WHERE address='{address}';"""
+            connection.execute(text(query))
+            addresses.append(address)
+        connection.commit()
+
+    print('同步錢包餘額完成！')
+    cursor.close()
+    conn.close()
+
+def check_bot_balance_synced():
+    sqlite_db_path = get_sqlite_db_path()
+    cheat_engine = create_engine(f'sqlite:///{sqlite_db_path}')
+
+    conn = connect(
+        host='35.189.161.212',
+        user='postgres',
+        password='squidcheat',
+        port=5432,
+        database='sc',
+    )
+    cursor = conn.cursor()
+    query = f"""SELECT address, balance FROM players LIMIT 1000"""
+    cursor.execute(query)
+
+    for address, balance in cursor.fetchall():
+        query = f"""
+            SELECT balance
+            FROM accounts
+            WHERE address='{address}';"""
+        balance_df = pd.read_sql_query(query, cheat_engine)
+        if balance != balance_df['balance'].iloc[0]:
+            print(f'{address} not synced')
+        # print(address, balance)
+
+
+    cursor.close()
+    conn.close()
+    cheat_engine.dispose()
