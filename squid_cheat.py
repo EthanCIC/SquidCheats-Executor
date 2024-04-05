@@ -488,18 +488,14 @@ def update_latest_bot_balance():
     cursor.execute(query)
 
     addresses = []
-    update_queries = []
-    for address, balance in tqdm(cursor.fetchall()):
-        query = f"""
-            UPDATE accounts
-            SET balance={balance}
-            WHERE address='{address}';"""
-        update_queries.append(query)
-        addresses.append(address)
-
     with cheat_engine.connect() as connection:
-        for query in update_queries:
+        for address, balance in tqdm(cursor.fetchall()):
+            query = f"""
+                UPDATE accounts
+                SET balance={balance}
+                WHERE address='{address}';"""
             connection.execute(text(query))
+            addresses.append(address)
         connection.commit()
 
     print('同步錢包餘額完成！')
@@ -538,5 +534,3 @@ def check_bot_balance_synced():
 
 if __name__ == '__main__':
     update_latest_bot_balance()
-    check_bot_balance_synced()
-    
