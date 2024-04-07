@@ -10,7 +10,7 @@ parser.add_argument('file_number', type=int, help='the number of the file to pro
 args = parser.parse_args()
 
 # 使用解析出的參數來建立檔案名稱
-filename = f"/airdrop/airdrop{args.file_number}.csv"
+filename = f"airdrop/airdrop{args.file_number}.csv"
 
 commands = read_and_process_file(filename)
 execute_commands(commands, N_min=1, N_max=1, sleep_min=None, sleep_max=None)
