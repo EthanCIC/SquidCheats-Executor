@@ -5,7 +5,7 @@ from squid_cheat import *
 
 def generate_hatch_commands(N_commands, ton_threshold=1, sort_column='total_egg', egg_min=None, egg_max=None):
     bot_df = get_bot_list_from_squid_cheat_db(ton_threshold=ton_threshold, sort_column=sort_column)
-    
+    print(len(bot_df))
     # 如果 N_commands 大於 bot_df 的行數，就將 N_commands 設定為 bot_df 的行數
     if N_commands > len(bot_df):
         N_commands = len(bot_df)
@@ -24,7 +24,7 @@ def generate_hatch_commands(N_commands, ton_threshold=1, sort_column='total_egg'
 
 def main(N_commands, ton_threshold, N_min, N_max, sleep_min, sleep_max, egg_min=None, egg_max=70000):
     while True:
-        update_latest_bot_balance()
+        # update_latest_bot_balance()
         hatch_commands, total_eggs = generate_hatch_commands(N_commands, ton_threshold=ton_threshold, egg_min=egg_min, egg_max=egg_max)
         print(f"Total eggs to hatch: {total_eggs}")
         execute_commands(hatch_commands, N_min=N_min, N_max=N_max, sleep_min=sleep_min, sleep_max=sleep_max)
@@ -37,7 +37,7 @@ if __name__ == "__main__":
     parser.add_argument('--N_max', type=int, default=1, help='Maximum number of bots to hatch. Default is 1')
     parser.add_argument('--sleep_min', type=float, help='Minimum sleep time in seconds.')
     parser.add_argument('--sleep_max', type=float, help='Maximum sleep time in seconds.')
-    parser.add_argument('--egg_min', type=int, default=5000, help='Minimum total egg count. Default is 5000')
+    parser.add_argument('--egg_min', type=int, default=5000, help='Minimum total egg count. Default is 5000echo "failed_commands.csv" >> .gitignoreecho "failed_commands.csv" >> .gitignore')
     parser.add_argument('--egg_max', type=int, default=70000, help='Maximum total egg count. Default is 70000')
 
     args = parser.parse_args()
