@@ -162,7 +162,7 @@ def execute_commands_hatch(all_commands, N_min, N_max, total_hatched_egg, total_
         avg_success_count_per_day = total_success_count / (elapsed_time / (24 * 60 * 60))  # 計算每天的平均成功次數
         formatted_time = format_time_delta(elapsed_time)
         print(f"\nTotal hatched egg: {total_hatched_egg}, average hatched egg per day: {avg_hatched_egg_per_day:,.0f}")
-        print(f"Success count: {success_count}, average per day: {avg_success_count_per_day:,.0f}")
+        print(f"Total success count: {total_success_count}, average per day: {avg_success_count_per_day:,.0f}")
         print(f"Total execution time: {formatted_time}\n")
     return total_hatched_egg, total_success_count
 
