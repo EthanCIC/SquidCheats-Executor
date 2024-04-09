@@ -25,7 +25,7 @@ def generate_hatch_commands(N_commands, ton_threshold=1, sort_column='total_egg'
 def main(N_commands, ton_threshold, N_min, N_max, sleep_min, sleep_max, egg_min=None, egg_max=70000):
     hatched_egg = 0
     hatch_count = 0
-    start_time = datetime.datetime.now()
+    start_time = datetime.now()
     while True:
         update_latest_bot_balance()
         hatch_commands, total_eggs = generate_hatch_commands(N_commands, ton_threshold=ton_threshold, egg_min=egg_min, egg_max=egg_max)
