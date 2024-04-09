@@ -15,7 +15,7 @@ def generate_hatch_commands(N_commands, ton_threshold=1, sort_column='total_egg'
     if egg_max is not None:
         bot_df = bot_df[bot_df['total_egg'] <= egg_max]
         
-    selected_bots = bot_df.sample(N_commands)
+    selected_bots = bot_df[~bot_df['id'].between(42001, 42020)].sample(N_commands)
     commands = []
     for index, row in selected_bots.iterrows():
         command = f"timeout --kill-after=30 30 npm run start -- hatch {row['id']} {row['id']} {row['total_egg']}"
