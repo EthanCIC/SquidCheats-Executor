@@ -24,6 +24,7 @@ def run_command(command):
         os.chdir(node_app_relative_path)
         # 在新的工作目錄中執行命令
         process = subprocess.Popen(command, shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        # process = subprocess.Popen(command, shell=True)
         process.wait()
         return process.returncode
     finally:
@@ -107,88 +108,69 @@ def execute_commands(all_commands, N_min, N_max, sleep_min=None, sleep_max=None)
 
     print("All commands have been executed")
 
-def execute_commands_hatch(all_commands, N_min, N_max, sleep_min=None, sleep_max=None):
-    failed_commands = all_commands.copy()  # 初始時，所有的命令都視為失敗的命令
-    retry_count = 0
+def execute_commands_hatch(all_commands, N_min, N_max, total_hatched_egg, total_success_count, sleep_min=None, sleep_max=None, start_time=None):
     total_success_count = 0  # 初始化總成功的命令數量
     total_fail_count = 0  # 初始化總失敗的命令數量
-    hatched_egg = 0
-    hatch_count = 0
+    total_commands = len(all_commands)
+    N_values = []
+    total_commands_initial = total_commands  # 保存初始的 total_commands 的值
+    total_hatched_egg = 0  # 初始化總孵化量
+    while total_commands > 0:
+        N = random.randint(N_min, N_max)  # 獲得隨機的 N
+        if N > total_commands:
+            N = total_commands
+        N_values.append(N)
+        total_commands -= N
+    total_batches = len(N_values)  # 根據 N_values 計算 total_batches
 
-    while all_commands:
-        retry_count += 1
-        total_success_count = 0  # 初始化總成功的命令數量
-        total_fail_count = 0  # 初始化總失敗的命令數量
-        total_commands = len(all_commands)
-        N_values = []
-        total_commands_initial = total_commands  # 保存初始的 total_commands 的值
-        while total_commands > 0:
-            N = random.randint(N_min, N_max)  # 獲得隨機的 N
-            if N > total_commands:
-                N = total_commands
-            N_values.append(N)
-            total_commands -= N
-        total_batches = len(N_values)  # 根據 N_values 計算 total_batches
-        total_time = total_batches * 30  # 每個 batch 最多需要 30 秒
+    sleep_times = []
+    if sleep_min is not None or sleep_max is not None:
+        sleep_min = sleep_min if sleep_min is not None else 0
+        sleep_max = sleep_max if sleep_max is not None else sleep_min
+        sleep_times = [random.randint(sleep_min, sleep_max) for _ in range(total_batches)]
 
-        sleep_times = []
-        if sleep_min is not None or sleep_max is not None:
-            sleep_min = sleep_min if sleep_min is not None else 0
-            sleep_max = sleep_max if sleep_max is not None else sleep_min
-            sleep_times = [random.randint(sleep_min, sleep_max) for _ in range(total_batches)]
+    print("\n" + "=" * 92)
+    print(f"Initial run: There are {total_commands_initial} commands in {total_batches} batches to run")
+    print("=" * 92 + "\n")
+    for i, N in enumerate(N_values):
+        success_count = 0  # 初始化成功的命令數量
+        fail_count = 0  # 初始化失敗的命令數量
+        batch = all_commands[:N]
+        all_commands = all_commands[N:]
+        print(f"Running {len(batch)} commands:")
+        for command in batch:
+            print(f"\t>> {command}")
+        with concurrent.futures.ThreadPoolExecutor() as executor:
+            results = list(executor.map(run_command, batch))
+        for command, result in zip(batch, results):
+            if result == 0:  # 如果命令成功，則從命令中獲取孵化量並累加
+                total_hatched_egg += int(command.split()[-1])
+        success_count += results.count(0)  # 累加成功的命令數量
+        fail_count += len(results) - results.count(0)  # 累加失敗的命令數量
+        print(f"\nBatch {i + 1} of {total_batches} completed. {success_count} commands succeeded, {fail_count} commands failed.\n")
+        total_success_count += success_count
+        total_fail_count += fail_count
+        # 如果設定了睡眠時間範圍，則在每個批次完成後隨機睡眠一段時間
+        if sleep_times:
+            sleep_time = sleep_times[i]
+            print(f"Sleeping for {sleep_time} seconds before next batch...\n")
+            time.sleep(sleep_time)
+        elapsed_time = time.time() - start_time  # 計算經過的時間
+        # print(f"\nSummary of Initial run: {total_success_count} commands succeeded, {total_fail_count} commands failed.\n")
+        print("All commands have been executed")
+        avg_hatched_egg_per_day = total_hatched_egg / (elapsed_time / (24 * 60 * 60))  # 計算每天的平均孵化量
+        avg_success_count_per_day = total_success_count / (elapsed_time / (24 * 60 * 60))  # 計算每天的平均成功次數
+        formatted_time = format_time_delta(elapsed_time)
+        print(f"\nTotal hatched egg: {total_hatched_egg}, average hatched egg per day: {avg_hatched_egg_per_day:,.0f}")
+        print(f"Success count: {success_count}, average per day: {avg_success_count_per_day:,.0f}")
+        print(f"Total execution time: {formatted_time}\n")
+    return total_hatched_egg, total_success_count
 
-        total_time = total_batches * 30 + sum(sleep_times)  # 每個 batch 最多需要 30 秒，加上每個批次之間的睡眠時間
-
-
-        print("\n" + "=" * 92)
-        if retry_count == 1:
-            print(f"Initial run: There are {total_commands_initial} commands in {total_batches} batches to run, which will take at most {total_time} seconds")
-        else:
-            print(f"Retry {retry_count - 1}: There are {total_commands_initial} commands in {total_batches} batches to run, which will take at most {total_time} seconds")
-        print("=" * 92 + "\n")
-        for i, N in enumerate(N_values):
-            success_count = 0  # 初始化成功的命令數量
-            fail_count = 0  # 初始化失敗的命令數量
-            batch = all_commands[:N]
-            all_commands = all_commands[N:]
-            print(f"Running {len(batch)} commands:")
-            hatched_egg += success_count * N  # assuming each successful command hatches N eggs
-            hatch_count += success_count
-            for command in batch:
-                print(f"\t>> {command}")
-            with concurrent.futures.ThreadPoolExecutor() as executor:
-                results = list(executor.map(run_command, batch))
-            success_count += results.count(0)  # 累加成功的命令數量
-            fail_count += len(results) - results.count(0)  # 累加失敗的命令數量
-            print(f"\nBatch {i + 1} of {total_batches} completed. {success_count} commands succeeded, {fail_count} commands failed.\n")
-            total_success_count += success_count
-            total_fail_count += fail_count
-            
-            for j, returncode in enumerate(results):
-                if returncode == 0:
-                    failed_commands.remove(batch[j])  # 將成功的命令從失敗的命令列表中移除
-                else:
-                    if batch[j] not in failed_commands:
-                        failed_commands.append(batch[j])  # 將新的失敗的命令加入到列表中
-            # 將失敗的命令寫入 CSV 檔案
-            with open('failed_commands.csv', 'w', newline='') as csvfile:
-                writer = csv.writer(csvfile)
-                for command in failed_commands:
-                    writer.writerow([command])
-            # 如果設定了睡眠時間範圍，則在每個批次完成後隨機睡眠一段時間
-            if sleep_times:
-                sleep_time = sleep_times[i]
-                print(f"Sleeping for {sleep_time} seconds before next batch...\n")
-                time.sleep(sleep_time)
-
-        all_commands = [command for command in failed_commands]
-        if retry_count == 1:
-            print(f"\nSummary of Initial run: {total_success_count} commands succeeded, {total_fail_count} commands failed. Retrying failed commands...\n")
-        else:
-            print(f"\nSummary of Retry {retry_count - 1}: {total_success_count} commands succeeded, {total_fail_count} commands failed. Retrying failed commands...\n")
-
-    print("All commands have been executed")
-    return hatched_egg, hatch_count
+def format_time_delta(seconds):
+    days, seconds = divmod(seconds, 24*60*60)
+    hours, seconds = divmod(seconds, 3600)
+    minutes, seconds = divmod(seconds, 60)
+    return f"{int(days)} days, {int(hours)} hours, {int(minutes)} minutes, {int(seconds)} seconds"
 
 def execute_commands_no_retry(all_commands, N_min, N_max, sleep_min=None, sleep_max=None):
     total_success_count = 0  # 初始化總成功的命令數量

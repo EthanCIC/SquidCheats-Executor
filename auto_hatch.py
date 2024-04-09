@@ -23,29 +23,18 @@ def generate_hatch_commands(N_commands, ton_threshold=1, sort_column='total_egg'
     return commands, sum(row['total_egg'] for _, row in selected_bots.iterrows())
 
 def main(N_commands, ton_threshold, N_min, N_max, sleep_min, sleep_max, egg_min=None, egg_max=70000):
-    hatched_egg = 0
-    hatch_count = 0
-    start_time = datetime.now()
+    total_hatched_egg = 0
+    total_success_count = 0
+    start_time = datetime.now().timestamp()
     while True:
-        update_latest_bot_balance()
+        # update_latest_bot_balance()
         hatch_commands, total_eggs = generate_hatch_commands(N_commands, ton_threshold=ton_threshold, egg_min=egg_min, egg_max=egg_max)
         print(f"Total eggs to hatch: {total_eggs}")
         # execute_commands(hatch_commands, N_min=N_min, N_max=N_max, sleep_min=sleep_min, sleep_max=sleep_max)
-        hatched_egg_batch, hatch_count_batch = execute_commands_hatch(hatch_commands, N_min=N_min, N_max=N_max, sleep_min=sleep_min, sleep_max=sleep_max)
-        hatched_egg += hatched_egg_batch
-        hatch_count += hatch_count_batch
-        elapsed_time = datetime.datetime.now() - start_time
-        average_egg_per_day = hatched_egg / (elapsed_time.total_seconds() / 86400)        
-        print(f"Average eggs hatched per day: {average_egg_per_day}")
-        print(f"Total eggs hatched so far: {hatched_egg}")
-        print(f"Elapsed time: {format_time_delta(elapsed_time)}")   
-        
-def format_time_delta(td):
-    days, seconds = td.days, td.seconds
-    hours = seconds // 3600
-    minutes = (seconds % 3600) // 60
-    seconds = (seconds % 60)
-    return f"{days} days, {hours} hours, {minutes} minutes, {seconds} seconds"
+        hatched_egg_batch, hatch_count_batch = execute_commands_hatch(hatch_commands, N_min, N_max, total_hatched_egg, total_success_count, sleep_min=sleep_min, sleep_max=sleep_max, start_time=start_time)
+        # hatched_egg_batch, hatch_count_batch = execute_commands_hatch(hatch_commands, total_hatched_egg, total_success_count, N_min=N_min, N_max=N_max, sleep_min=sleep_min, sleep_max=sleep_max, start_time=start_time)
+        total_hatched_egg += hatched_egg_batch
+        total_success_count += hatch_count_batch
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='自動 hatch 機器人，會永無止盡的執行下去，直到手動停止程式。')
