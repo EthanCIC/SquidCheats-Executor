@@ -172,7 +172,7 @@ def sweep(target_price, ton_threshold=0.62, buffer=0.5, only_our_order=False, ig
         nonce = row['nonce']
         order_id = row['order_id']
 
-        command = f"timeout --kill-after=30 30 npm run start -- buy {id} {amount} {price} {seller} {nonce}"
+        command = f"npm run start -- buy {id} {amount} {price} {seller} {nonce}"
         all_commands.append(command)
         order_ids.append(order_id)
     

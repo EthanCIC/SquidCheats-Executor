@@ -462,7 +462,8 @@ def get_sql_in_condition_command(field, in_list, is_in=True):
     need_not = " "
     if not is_in:
         need_not = " NOT "
-    return f"{field}{need_not}IN ({','.join(in_list)})"
+    in_list_string = "','".join(in_list)
+    return f"{field}{need_not}IN ('{in_list_string}')"
 
 def get_sqlite_db_path():
     # 獲取當前腳本的路徑
