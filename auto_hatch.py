@@ -18,7 +18,9 @@ def generate_hatch_commands(N_commands, ton_threshold=1, sort_column='total_egg'
     selected_bots = bot_df[~bot_df['id'].between(42001, 42020)].sample(N_commands)
     commands = []
     for index, row in selected_bots.iterrows():
-        command = f"timeout --kill-after=30 30 npm run start -- hatch {row['id']} {row['id']} {row['total_egg']}"
+        egg_multiplier = random.uniform(0.65, 1)
+        total_egg = int(row['total_egg'] * egg_multiplier)
+        command = f"timeout --kill-after=30 30 npm run start -- hatch {row['id']} {row['id']} {total_egg}"
         commands.append(command)
     return commands, sum(row['total_egg'] for _, row in selected_bots.iterrows())
 
