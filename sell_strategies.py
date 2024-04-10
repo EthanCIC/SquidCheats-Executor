@@ -149,7 +149,10 @@ def sweep(target_price, ton_threshold=0.62, buffer=0.5, only_our_order=False, ig
         order_id = open_order_df['id'].iloc[i]
 
         # 找到 squid_cheat_df 內 'ton'(balance) - 'ton'(order_amount) 差值最小（但必須是大於buffer的）的那個地址
-        address = squid_cheat_df[squid_cheat_df['ton'] - TON/1e9 > buffer]['address'].iloc[0]
+        address_series = squid_cheat_df[squid_cheat_df['ton'] - TON/1e9 > buffer]['address']
+        if len(address_series) == 0:
+            continue
+        address = address_series.iloc[0]
         # 找到該地址的 id
         id = squid_cheat_df[squid_cheat_df['address'] == address]['id'].iloc[0]
         # 把配對的地址從 df 內刪掉
