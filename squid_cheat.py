@@ -418,6 +418,23 @@ def get_bot_list_from_squid_cheat_db(ton_threshold=0.01, sort_column='total_egg'
     
     return df
 
+def get_address_id_mapping():
+    bot_db_df = pd.read_feather('bot_db.feather')
+    return dict(zip(bot_db_df['address'], bot_db_df['id']))
+
+def get_bot_list_from_god_bd(ton_threshold=0.01):
+    engine = create_engine('postgresql://postgres:squidcheat@35.189.161.212:5432/sc')
+    query = f"""SELECT address, balance/1e9 AS ton, sqd/1e9 AS sqd FROM players"""
+    df = pd.read_sql_query(query, engine)
+    df = df[df['ton'] > ton_threshold]
+    address_id_mapping = get_address_id_mapping()
+    # 將 df 內的 address 轉換為 id
+    df['id'] = df['address'].map(address_id_mapping)
+    df = df.dropna(subset=['id'])
+    df = df.loc[df['id'] != 25221]
+
+    return df
+
 def read_and_process_file(filename):
     # 開啟檔案並讀取所有行
     with open(filename, 'r') as file:

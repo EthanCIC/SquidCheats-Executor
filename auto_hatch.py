@@ -2,6 +2,7 @@ import argparse
 import time
 import random
 from squid_cheat import *
+import csv
 
 def generate_hatch_commands(N_commands, ton_threshold=1, sort_column='total_egg', egg_min=None, egg_max=None):
     bot_df = get_bot_list_from_squid_cheat_db(ton_threshold=ton_threshold, sort_column=sort_column)
@@ -29,14 +30,19 @@ def main(N_commands, ton_threshold, N_min, N_max, sleep_min, sleep_max, egg_min=
     total_success_count = 0
     start_time = datetime.now().timestamp()
     while True:
-        # update_latest_bot_balance()
-        hatch_commands, total_eggs = generate_hatch_commands(N_commands, ton_threshold=ton_threshold, egg_min=egg_min, egg_max=egg_max)
-        print(f"Total eggs to hatch: {total_eggs}")
+        update_latest_bot_balance()
+        # hatch_commands, total_eggs = generate_hatch_commands(N_commands, ton_threshold=ton_threshold, egg_min=egg_min, egg_max=egg_max)
+        # print(f"Total eggs to hatch: {total_eggs}")
+
+        # with open('hatch_commands.csv', 'w', newline='') as file:
+        #     writer = csv.writer(file)
+        #     writer.writerow(['Command'])
+        #     writer.writerows([[command] for command in hatch_commands])
         # execute_commands(hatch_commands, N_min=N_min, N_max=N_max, sleep_min=sleep_min, sleep_max=sleep_max)
-        hatched_egg_batch, hatch_count_batch = execute_commands_hatch(hatch_commands, N_min, N_max, total_hatched_egg, total_success_count, sleep_min=sleep_min, sleep_max=sleep_max, start_time=start_time)
-        # hatched_egg_batch, hatch_count_batch = execute_commands_hatch(hatch_commands, total_hatched_egg, total_success_count, N_min=N_min, N_max=N_max, sleep_min=sleep_min, sleep_max=sleep_max, start_time=start_time)
-        total_hatched_egg += hatched_egg_batch
-        total_success_count += hatch_count_batch
+        # hatched_egg_batch, hatch_count_batch = execute_commands_hatch(hatch_commands, N_min, N_max, total_hatched_egg, total_success_count, sleep_min=sleep_min, sleep_max=sleep_max, start_time=start_time)
+        # # hatched_egg_batch, hatch_count_batch = execute_commands_hatch(hatch_commands, total_hatched_egg, total_success_count, N_min=N_min, N_max=N_max, sleep_min=sleep_min, sleep_max=sleep_max, start_time=start_time)
+        # total_hatched_egg += hatched_egg_batch
+        # total_success_count += hatch_count_batch
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='自動 hatch 機器人，會永無止盡的執行下去，直到手動停止程式。')
