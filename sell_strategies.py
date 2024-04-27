@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 from datetime import datetime
 import requests
 from requests.exceptions import RequestException
+from command_const import TIMEOUT_HEADER
 
 def sell_strategy_avg(order_number, lower_bound_price, upper_bound_price, lower_bound_egg, upper_bound_egg, ratio=0.2, ton_threshold=0.01, sort_column='total_egg'):
     # 產出 uniform 隨機 order_number 筆資料
@@ -73,7 +74,7 @@ def sell_strategy_avg(order_number, lower_bound_price, upper_bound_price, lower_
         address = row['address']
         amount = row['egg']
         ton = row['TON']
-        command = f"npm run start -- sell {id} {id} {amount} {math.floor(ton * 1e9)}"
+        command = f"{TIMEOUT_HEADER} npm run start -- sell {id} {id} {amount} {math.floor(ton * 1e9)}"
         all_commands.append(command)
 
     bins = pd.cut(script_df['price'], bins=np.arange(lower_bound_price, upper_bound_price+0.0001, 0.0001))
@@ -177,7 +178,7 @@ def sweep(target_price, ton_threshold=0.62, buffer=0.5, only_our_order=False, ig
         nonce = row['nonce']
         order_id = row['order_id']
 
-        command = f"npm run start -- buy {id} {amount} {price} {seller} {nonce}"
+        command = f"{TIMEOUT_HEADER} npm run start -- buy {id} {amount} {price} {seller} {nonce}"
         all_commands.append(command)
         order_ids.append(order_id)
     
@@ -216,7 +217,7 @@ def buy_sqd_continous(order_number, ton_min, ton_max, ratio=0.9, ton_threshold=0
     for i in range(order_number):
         id = ids[i]
         ton_in = ton[i]
-        command = f"npm run start -- swap TON SQD {id} {ton_in}"
+        command = f"{TIMEOUT_HEADER} npm run start -- swap TON SQD {id} {ton_in}"
         all_commands.append(command)
 
     # 用 print 和 display 來顯示資料統計
@@ -269,7 +270,7 @@ def sell_sqd_continous(order_number, sqd_min, sqd_max, ratio=0.9, ton_threshold=
     for i in range(order_number):
         id = ids[i]
         sqd_in = sqd[i]
-        command = f"npm run start -- swap SQD TON {id} {sqd_in}"
+        command = f"{TIMEOUT_HEADER} npm run start -- swap SQD TON {id} {sqd_in}"
         all_commands.append(command)
 
     # 用 print 和 display 來顯示資料統計
