@@ -7,8 +7,9 @@ import matplotlib.pyplot as plt
 from datetime import datetime
 import requests
 from requests.exceptions import RequestException
+from random import shuffle
 
-def sell_strategy_avg(order_number, lower_bound_price, upper_bound_price, lower_bound_egg, upper_bound_egg, ratio=0.2, ton_threshold=0.01, sort_column='total_egg'):
+def sell_strategy_avg(order_number, lower_bound_price, upper_bound_price, lower_bound_egg, upper_bound_egg, ratio=0.2, ton_threshold=0.01, ton_upper_bound=None, sort_column='total_egg'):
     # 產出 uniform 隨機 order_number 筆資料
     price = np.random.uniform(lower_bound_price, upper_bound_price, order_number)
     # 產出 order_number 個 egg 數量，用 log2 平均分佈
@@ -43,7 +44,7 @@ def sell_strategy_avg(order_number, lower_bound_price, upper_bound_price, lower_
     script_df = script_df.sort_values('egg', ascending=False)
 
     # 這是我要配對的地址
-    squid_cheat_df = get_bot_list_from_squid_cheat_db(ton_threshold, sort_column='total_egg')
+    squid_cheat_df = get_bot_list_from_squid_cheat_db(ton_threshold, ton_upper_bound, sort_column='total_egg')
 
     # 開始配對
     orders = []
@@ -127,14 +128,14 @@ def sell_strategy_avg(order_number, lower_bound_price, upper_bound_price, lower_
 def get_nonce():
     return int(datetime.now().timestamp() // 1)
 
-def sweep(target_price, ton_threshold=0.62, buffer=0.5, only_our_order=False, ignore_addresses=[], ignore_our_order=False, order_ton_threshold=0):
+def sweep(target_price, ton_threshold=0.62, buffer=0.5, only_our_order=False, ton_upper_bound=None, ignore_addresses=[], ignore_our_order=False, order_ton_threshold=0):
     open_order_df = get_open_orders_from_squid_db_for_sweep(only_our_order=only_our_order, ignore_addresses=ignore_addresses, ignore_our_order=ignore_our_order, order_ton_threshold=order_ton_threshold, target_price=target_price)
 
     # 這是我要的訂單 (從price少的開始掃)
     open_order_df = open_order_df.sort_values(by='price')
 
     # 這是我要配對的地址
-    squid_cheat_df = get_bot_list_from_squid_cheat_db(ton_threshold, sort_column='ton')
+    squid_cheat_df = get_bot_list_from_squid_cheat_db(ton_threshold, ton_upper_bound, sort_column='ton')
 
     squid_cheat_df = squid_cheat_df.sort_values(by='ton', ascending=True)
 
@@ -308,6 +309,10 @@ def fetch_reserves(retries=3, delay=5):
 def calculate_spot_price(reserve_ton, reserve_sqd):
     return reserve_ton / reserve_sqd
 
+def get_amm_price():
+    reserve_ton, reserve_sqd = fetch_reserves()
+    return calculate_spot_price(reserve_ton, reserve_sqd)
+
 def calculate_price_change(inputAmount, inputToken):
     inputToken = inputToken.upper()
 
@@ -329,6 +334,38 @@ def calculate_price_change(inputAmount, inputToken):
     price_change = (spot_price_after - spot_price) / spot_price * 100
 
     return spot_price, spot_price_after, price_change
+
+def buy_sell_sqd_continuous(total_orders, buy_ratio, ton_min, ton_max, ton_threshold=0.01):
+    """
+    生成買賣單的函数
+    
+    Args:
+    total_orders (int): 總共要產生的訂單數量
+    buy_ratio (float): 買單占總單數的比例,範圍是 (0, 1)
+    ton_min (float): 買單 TON 的最小值
+    ton_max (float): 買單 TON 的最大值
+    ton_threshold (float): 獲取地址資訊的 TON 閾值,默認為 0.01
+    
+    Returns:
+    list: 包含所有買賣單指令的列表
+    """
+    
+    # 計算買單和賣單的數量
+    buy_orders = int(total_orders * buy_ratio)
+    sell_orders = total_orders - buy_orders
+    
+    # 生成買單
+    buy_commands = buy_sqd_continous(buy_orders, ton_min, ton_max, ton_threshold=ton_threshold)
+    
+    # 計算 SQD 的價格,並生成賣單
+    avg_ton_price = get_amm_price(sum([int(cmd.split()[-1]) for cmd in buy_commands]), 'TON')
+    sell_commands = sell_sqd_continous(sell_orders, int(ton_min / avg_ton_price), int(ton_max / avg_ton_price), ton_threshold=ton_threshold)
+    
+    # 將買賣單隨機打亂
+    all_commands = buy_commands + sell_commands
+    shuffle(all_commands)
+    
+    return all_commands
 
 if __name__ == '__main__':
     all_commands, order_ids = sweep(0.0005)

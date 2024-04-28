@@ -386,7 +386,7 @@ def execute_commands_for_sweep(all_commands, order_ids, finish_in_minutes=0, try
 
     check_sweep_success(origin_commands, origin_order_ids)
 
-def get_bot_list_from_squid_cheat_db(ton_threshold=0.01, sort_column='total_egg'):
+def get_bot_list_from_squid_cheat_db(ton_threshold=0.01, ton_upper_bound=None ,sort_column='total_egg'):
     squid_db_engine = create_engine('mysql+pymysql://pelith:Pup3dgVfvv7Deg@34.81.131.171:3306/squid-prod')
     all_address_query = """
         SELECT address, squid, squid_egg, reward_per_squid_paid
@@ -413,6 +413,8 @@ def get_bot_list_from_squid_cheat_db(ton_threshold=0.01, sort_column='total_egg'
 
     df = pd.merge(bot_db_df, squid_db_df[['address', 'total_egg']], on='address', how='left')
     df = df[df['ton'] > ton_threshold]
+    if ton_upper_bound is not None:
+        df = df[df['ton'] < ton_upper_bound]
     df = df.sort_values(sort_column, ascending=False)
     df['total_egg'] = df['total_egg'].fillna(0).astype(int)
     
