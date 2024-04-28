@@ -336,7 +336,7 @@ def calculate_price_change(inputAmount, inputToken):
 
     return spot_price, spot_price_after, price_change
 
-def buy_sell_sqd_continuous(total_orders, buy_ratio, ton_min, ton_max, ton_threshold=0.01):
+def buy_sell_sqd_continuous(total_orders, buy_ratio, ton_min, ton_max, ratio=0.8, ton_threshold=0.01):
     """
     生成買賣單的函数
     
@@ -356,11 +356,11 @@ def buy_sell_sqd_continuous(total_orders, buy_ratio, ton_min, ton_max, ton_thres
     sell_orders = total_orders - buy_orders
     
     # 生成買單
-    buy_commands = buy_sqd_continous(buy_orders, ton_min, ton_max, ton_threshold=ton_threshold)
+    buy_commands = buy_sqd_continous(buy_orders, ton_min, ton_max, ratio, ton_threshold=ton_threshold)
     
     # 計算 SQD 的價格,並生成賣單
     avg_ton_price = get_amm_price(sum([int(cmd.split()[-1]) for cmd in buy_commands]), 'TON')
-    sell_commands = sell_sqd_continous(sell_orders, int(ton_min / avg_ton_price), int(ton_max / avg_ton_price), ton_threshold=ton_threshold)
+    sell_commands = sell_sqd_continous(sell_orders, int(ton_min / avg_ton_price), int(ton_max / avg_ton_price), ratio, ton_threshold=ton_threshold)
     
     # 將買賣單隨機打亂
     all_commands = buy_commands + sell_commands

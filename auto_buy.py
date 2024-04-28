@@ -2,8 +2,8 @@ from sell_strategies import *
 from squid_cheat import *
 
 buy_sqd_continous_commands = buy_sell_sqd_continuous(
-    order_number = 1000,
-    buy_ratio=0.5,
+    total_orders = 1000,
+    buy_ratio = 0.5,
     ton_min = 5, 
     ton_max = 15, 
     ratio=0.5)
