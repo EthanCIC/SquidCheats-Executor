@@ -3,6 +3,7 @@ import time
 import random
 from squid_cheat import *
 import csv
+from command_const import TIMEOUT_HEADER
 
 def generate_hatch_commands(N_commands, ton_threshold=1, sort_column='total_egg', egg_min=None, egg_max=None):
     bot_df = get_bot_list_from_squid_cheat_db(ton_threshold=ton_threshold, sort_column=sort_column)
@@ -21,7 +22,7 @@ def generate_hatch_commands(N_commands, ton_threshold=1, sort_column='total_egg'
     for index, row in selected_bots.iterrows():
         egg_multiplier = random.uniform(1, 1)
         total_egg = int(row['total_egg'] * egg_multiplier)
-        command = f"npm run start -- hatch {row['id']} {row['id']} {total_egg}"
+        command = f"{TIMEOUT_HEADER} npm run start -- hatch {row['id']} {row['id']} {total_egg}"
         commands.append(command)
     return commands, sum(row['total_egg'] for _, row in selected_bots.iterrows())
 
