@@ -359,7 +359,7 @@ def buy_sell_sqd_continuous(total_orders, buy_ratio, ton_min, ton_max, ratio=0.8
     buy_commands = buy_sqd_continous(buy_orders, ton_min, ton_max, ratio, ton_threshold=ton_threshold)
     
     # 計算 SQD 的價格,並生成賣單
-    avg_ton_price = get_amm_price(sum([int(cmd.split()[-1]) for cmd in buy_commands]), 'TON')
+    avg_ton_price = get_amm_price()
     sell_commands = sell_sqd_continous(sell_orders, int(ton_min / avg_ton_price), int(ton_max / avg_ton_price), ratio, ton_threshold=ton_threshold)
     
     # 將買賣單隨機打亂
