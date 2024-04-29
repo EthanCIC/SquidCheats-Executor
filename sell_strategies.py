@@ -336,37 +336,61 @@ def calculate_price_change(inputAmount, inputToken):
 
     return spot_price, spot_price_after, price_change
 
-def buy_sell_sqd_continuous(total_orders, buy_ratio, ton_min, ton_max, ratio=0.8, ton_threshold=0.01):
+def buy_sell_sqd_continuous(total_orders, buy_ratio, ton_min, ton_max, buy_group_min=1, buy_group_max=5, sell_group_min=3, sell_group_max=4, ton_threshold=0.01):
     """
-    生成買賣單的函数
+    生成买卖单的函数
     
     Args:
-    total_orders (int): 總共要產生的訂單數量
-    buy_ratio (float): 買單占總單數的比例,範圍是 (0, 1)
-    ton_min (float): 買單 TON 的最小值
-    ton_max (float): 買單 TON 的最大值
-    ton_threshold (float): 獲取地址資訊的 TON 閾值,默認為 0.01
+    total_orders (int): 总共要产生的订单数量
+    buy_ratio (float): 买单占总单数的比例,范围是 (0, 1)
+    ton_min (float): 买单 TON 的最小值
+    ton_max (float): 买单 TON 的最大值
+    buy_group_min (int): 买单组的最小size
+    buy_group_max (int): 买单组的最大size
+    sell_group_min (int): 卖单组的最小size
+    sell_group_max (int): 卖单组的最大size
+    ton_threshold (float): 获取地址信息的 TON 阈值,默认为 0.01
     
     Returns:
-    list: 包含所有買賣單指令的列表
+    list: 包含所有买卖单指令的列表
     """
     
-    # 計算買單和賣單的數量
+    # 计算买单和卖单的数量
     buy_orders = int(total_orders * buy_ratio)
     sell_orders = total_orders - buy_orders
     
-    # 生成買單
-    buy_commands = buy_sqd_continous(buy_orders, ton_min, ton_max, ratio, ton_threshold=ton_threshold)
+    # 生成买单
+    buy_commands = buy_sqd_continous(buy_orders, ton_min, ton_max, ton_threshold=ton_threshold)
     
-    # 計算 SQD 的價格,並生成賣單
+    # 计算 SQD 的价格,并生成卖单
     avg_ton_price = get_amm_price()
-    sell_commands = sell_sqd_continous(sell_orders, int(ton_min / avg_ton_price), int(ton_max / avg_ton_price), ratio, ton_threshold=ton_threshold)
+    sell_commands = sell_sqd_continous(sell_orders, int(ton_min / avg_ton_price), int(ton_max / avg_ton_price), ton_threshold=ton_threshold)
     
-    # 將買賣單隨機打亂
-    all_commands = buy_commands + sell_commands
+    # 将买单和卖单分成组,组内大小为随机
+    buy_groups = []
+    sell_groups = []
+    
+    for cmd in buy_commands:
+        if len(buy_groups) == 0 or len(buy_groups[-1]) >= randint(buy_group_min, buy_group_max):
+            buy_groups.append([])
+        buy_groups[-1].append(cmd)
+    
+    for cmd in sell_commands:
+        if len(sell_groups) == 0 or len(sell_groups[-1]) >= randint(sell_group_min, sell_group_max):
+            sell_groups.append([])
+        sell_groups[-1].append(cmd)
+    
+    # 在每个组内部随机排序
+    for group in buy_groups:
+        shuffle(group)
+    for group in sell_groups:
+        shuffle(group)
+    
+    # 将买卖单组合在一起,并随机打乱
+    all_commands = buy_groups + sell_groups
     shuffle(all_commands)
     
-    return all_commands
+    return [cmd for group in all_commands for cmd in group]
 
 if __name__ == '__main__':
     all_commands, order_ids = sweep(0.0005)
