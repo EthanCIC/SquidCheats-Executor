@@ -336,7 +336,7 @@ def calculate_price_change(inputAmount, inputToken):
 
     return spot_price, spot_price_after, price_change
 
-def buy_sell_sqd_continuous(total_orders, buy_ratio, ton_min, ton_max, buy_group_min=1, buy_group_max=5, sell_group_min=3, sell_group_max=4, ton_threshold=0.01):
+def buy_sell_sqd_continuous(total_orders, buy_ratio, ton_min, ton_max, ratio, buy_group_min=1, buy_group_max=5, sell_group_min=3, sell_group_max=4, ton_threshold=0.01):
     """
     生成买卖单的函数
     
@@ -360,11 +360,11 @@ def buy_sell_sqd_continuous(total_orders, buy_ratio, ton_min, ton_max, buy_group
     sell_orders = total_orders - buy_orders
     
     # 生成买单
-    buy_commands = buy_sqd_continous(buy_orders, ton_min, ton_max, ton_threshold=ton_threshold)
+    buy_commands = buy_sqd_continous(buy_orders, ton_min, ton_max, ratio, ton_threshold=ton_threshold)
     
     # 计算 SQD 的价格,并生成卖单
     avg_ton_price = get_amm_price()
-    sell_commands = sell_sqd_continous(sell_orders, int(ton_min / avg_ton_price), int(ton_max / avg_ton_price), ton_threshold=ton_threshold)
+    sell_commands = sell_sqd_continous(sell_orders, int(ton_min / avg_ton_price), int(ton_max / avg_ton_price), ratio, ton_threshold=ton_threshold)
     
     # 将买单和卖单分成组,组内大小为随机
     buy_groups = []
